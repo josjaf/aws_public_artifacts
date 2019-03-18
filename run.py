@@ -66,10 +66,23 @@ def main():
     org_accounts = get_org_accounts(session)
     print(org_accounts)
     for account in org_accounts:
+        print(f"Processing Account: {account}")
         child_session = get_child_session(account_id=account, role_name='OrganizationAccountAccessRole', sts=None)
         ec2 = child_session.client('ec2')
-        response = ec2.describe_vpcs()
-        print(response)
+        #response = ec2.describe_vpcs()
+        #print(response)
+
+        region_list = [region['RegionName'] for region in ec2.describe_regions()['Regions']]
+
+        for region in region_list:
+            child_account = session.client('ec2', region_name=region)
+            vpcs = child_account.describe_vpcs()
+            for vpc in vpcs['Vpcs']:
+
+                if vpc['IsDefault'] == True:
+                    print('Default VPC  //       ' + 'VPC ID: ' + vpc['VpcId'] + '//' + 'IP Range: ' + vpc['CidrBlock'])
+                else:
+                    print('User Created VPC  //  ' + 'VPC ID: ' + vpc['VpcId'] + '//' + 'IP Range: ' + vpc['CidrBlock'])
     return
 
 if __name__ == '__main__':
