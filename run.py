@@ -1,6 +1,6 @@
 import uuid
 import boto3
-
+import botocore
 def get_child_session(account_id, role_name, sts=None):
     """
     get session, with error handling, allows for passing in an sts client. This allows Account A > B > C where A cannot assume a role directly to C
