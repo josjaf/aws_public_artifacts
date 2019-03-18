@@ -1,6 +1,11 @@
 import uuid
 import boto3
 import botocore
+import threading
+
+
+# Things to add
+
 def get_child_session(account_id, role_name, sts=None):
     """
     get session, with error handling, allows for passing in an sts client. This allows Account A > B > C where A cannot assume a role directly to C
@@ -39,12 +44,15 @@ def get_child_session(account_id, role_name, sts=None):
     except botocore.exceptions.ClientError as e:
 
         if e.response['Error']['Code'] == 'AccessDenied':
-            raise Exception(e)
+            print(e)
+            #raise Exception(e)
 
         elif 'Not authorized to perform sts:AssumeRole' in str(e):
-            raise Exception(f"ERROR:Not authorized to perform sts:AssumeRole on {role_arn}")
+            print(e)
+            #raise Exception(f"ERROR:Not authorized to perform sts:AssumeRole on {role_arn}")
         else:
-            raise Exception(e)
+            print(e)
+            #raise Exception(e)
 
     finally:
         pass
@@ -61,13 +69,9 @@ def get_org_accounts(session):
             account_ids.append(account['Id'])
     return account_ids
 
-def main():
-    session = boto3.session.Session()
-    org_accounts = get_org_accounts(session)
-    ec2 = session.client('ec2', region_name='us-east-1')
-    region_list = [region['RegionName'] for region in ec2.describe_regions()['Regions']]
-    print(org_accounts)
-    for account in org_accounts:
+
+def worker(account, region_list, session):
+    try:
         print(f"Processing Account: {account}")
         child_session = get_child_session(account_id=account, role_name='OrganizationAccountAccessRole', sts=None)
         ec2 = child_session.client('ec2')
@@ -82,9 +86,26 @@ def main():
             for vpc in vpcs['Vpcs']:
 
                 if vpc['IsDefault'] == True:
-                    print('Default VPC  //       ' + 'VPC ID: ' + vpc['VpcId'] + '//' + 'IP Range: ' + vpc['CidrBlock'])
+                    continue
+                    #print('Default VPC  //       ' + 'VPC ID: ' + vpc['VpcId'] + '//' + 'IP Range: ' + vpc['CidrBlock'])
                 else:
-                    print('User Created VPC  //  ' + 'VPC ID: ' + vpc['VpcId'] + '//' + 'IP Range: ' + vpc['CidrBlock'])
+                    print('AccountId:' + account + ' User Created VPC  //  ' + 'VPC ID: ' + vpc['VpcId'] + '//' + 'IP Range: ' + vpc['CidrBlock'])
+    except:
+        pass
+
+
+threads = []
+def main():
+    session = boto3.session.Session()
+    org_accounts = get_org_accounts(session)
+    ec2 = session.client('ec2', region_name='us-east-1')
+    region_list = [region['RegionName'] for region in ec2.describe_regions()['Regions']]
+    print(org_accounts)
+    for account in org_accounts:
+        t = threading.Thread(target=worker, args=(account, region_list, session))
+        threads.append(t)
+        t.start()
+
     return
 
 if __name__ == '__main__':
