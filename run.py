@@ -90,12 +90,16 @@ def worker(account, region_list, session):
                     #print('Default VPC  //       ' + 'VPC ID: ' + vpc['VpcId'] + '//' + 'IP Range: ' + vpc['CidrBlock'])
                 else:
                     print('AccountId:' + account + ' User Created VPC  //  ' + 'VPC ID: ' + vpc['VpcId'] + '//' + 'IP Range: ' + vpc['CidrBlock'])
+                vpc_dict = {'AccountId': account, 'VpcId': vpc['VpcId'], 'CIDR': vpc['CidrBlock']}
+                final_result.append(vpc_dict)
     except:
         pass
 
 
 threads = []
 def main():
+    global final_result
+    final_result = []
     session = boto3.session.Session()
     org_accounts = get_org_accounts(session)
     ec2 = session.client('ec2', region_name='us-east-1')
@@ -106,6 +110,10 @@ def main():
         threads.append(t)
         t.start()
 
+    # wait for threads to finish
+    for thread in threads:
+        thread.join()
+    print(final_result)
     return
 
 if __name__ == '__main__':
