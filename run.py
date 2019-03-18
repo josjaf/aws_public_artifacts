@@ -90,7 +90,7 @@ def worker(account, region_list, session):
                     #print('Default VPC  //       ' + 'VPC ID: ' + vpc['VpcId'] + '//' + 'IP Range: ' + vpc['CidrBlock'])
                 else:
                     print('AccountId:' + account + ' User Created VPC  //  ' + 'VPC ID: ' + vpc['VpcId'] + '//' + 'IP Range: ' + vpc['CidrBlock'])
-                vpc_dict = {'AccountId': account, 'VpcId': vpc['VpcId'], 'CIDR': vpc['CidrBlock']}
+                vpc_dict = {'AccountId': account, 'VpcId': vpc['VpcId'], 'CIDR': vpc['CidrBlock'], 'Region': region}
                 final_result.append(vpc_dict)
     except:
         pass
