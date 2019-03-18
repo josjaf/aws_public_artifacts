@@ -1,7 +1,11 @@
 import uuid
+import os
+import threading
+import csv
+
 import boto3
 import botocore
-import threading
+
 
 
 # Things to add
@@ -73,6 +77,7 @@ def get_org_accounts(session):
 def worker(account, region_list, session):
     try:
         print(f"Processing Account: {account}")
+        role_name = os.environ.get('RoleName', 'OrganizationAccountAccessRole')
         child_session = get_child_session(account_id=account, role_name='OrganizationAccountAccessRole', sts=None)
         ec2 = child_session.client('ec2')
         #response = ec2.describe_vpcs()
@@ -95,10 +100,33 @@ def worker(account, region_list, session):
     except:
         pass
 
+def get_headers(results):
+    # getting keys from downstream result so that custom logic added after won't required updating in multiple places
+    headers = []
+    for d in results:
+        for key in d.keys():
+            headers.append(key)
+    headers = list(set(headers))
+    return headers
 
-threads = []
+
+def write_csv(results):
+    headers = get_headers(results)
+    output_ec2 = 'output.csv'
+    with open(output_ec2, 'w') as csvfile:
+        # if fieldnames = ['aws:cloudformation']
+        fieldnames = headers
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames, lineterminator='\n')
+
+        writer.writeheader()
+        for result in results:
+            # print(f"{instance}")
+            row = result
+            writer.writerow(row)
+
 def main():
     global final_result
+    threads = []
     final_result = []
     session = boto3.session.Session()
     org_accounts = get_org_accounts(session)
@@ -114,6 +142,7 @@ def main():
     for thread in threads:
         thread.join()
     print(final_result)
+    write_csv(final_result)
     return
 
 if __name__ == '__main__':
