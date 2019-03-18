@@ -64,6 +64,8 @@ def get_org_accounts(session):
 def main():
     session = boto3.session.Session()
     org_accounts = get_org_accounts(session)
+    ec2 = session.client('ec2', region_name='us-east-1')
+    region_list = [region['RegionName'] for region in ec2.describe_regions()['Regions']]
     print(org_accounts)
     for account in org_accounts:
         print(f"Processing Account: {account}")
@@ -72,7 +74,7 @@ def main():
         #response = ec2.describe_vpcs()
         #print(response)
 
-        region_list = [region['RegionName'] for region in ec2.describe_regions()['Regions']]
+
 
         for region in region_list:
             child_account = session.client('ec2', region_name=region)
