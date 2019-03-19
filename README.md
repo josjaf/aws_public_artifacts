@@ -6,4 +6,4 @@ Application process flow:
 2. Assumes Default Cross Account role to each child account to list regions and then describe VPCs in each region
 3. Returns results and appends a CSV file with the following values:  AccountId,	CIDR Block,	VpcId,	Region located.
 
-This application uses threading to speed up the process of querying the regions of each account.  Users will notice a momentary spike in local machne resources as the threads are created and the APIs invoked.
+This application uses threading to speed up the process of querying the regions of each account.  Users will notice a momentary spike in local machine resources as the threads are created, the sessions are created and the APIs invoked.
