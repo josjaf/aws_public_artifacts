@@ -93,9 +93,6 @@ def worker(account, session):
         child_session = get_child_session(account_id=account, role_name=role_name, session=session)
         ec2 = child_session.client('ec2')
         region_list = [region['RegionName'] for region in ec2.describe_regions()['Regions']]
-        # ec2 = child_session.client('ec2')
-        # response = ec2.describe_vpcs()
-        # print(response)
 
         for region in region_list:
             ec2 = child_session.client('ec2', region_name=region)
@@ -163,15 +160,10 @@ def main():
     final_result = []
     session = boto3.session.Session()
     org_accounts = get_org_accounts(session)
-
-    print(org_accounts)
     for account in org_accounts:
-        # session = boto3.session.Session()
-        print(account)
         t = threading.Thread(target=worker, args=(account, None))
         threads.append(t)
         t.start()
-        # worker(account, region_list)
     # wait for threads to finish
     for thread in threads:
         thread.join()
