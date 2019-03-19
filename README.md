@@ -1,4 +1,3 @@
-# aws_public_artifacts
 # AWS Organizations IP Querying
 
 Application uses cross account roles to collect the IP range of all VPCs in an organization.  Users will need to ensure the proper cross account roles are created for each account.
