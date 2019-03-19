@@ -10,7 +10,7 @@ import botocore
 
 # Things to add
 
-def get_child_session(account_id, role_name, sts=None):
+def get_child_session(account_id, role_name, session=None):
     """
     get session, with error handling, allows for passing in an sts client. This allows Account A > B > C where A cannot assume a role directly to C
     :param account_id:
@@ -21,10 +21,11 @@ def get_child_session(account_id, role_name, sts=None):
     # “/“ + name if not name.startswith(“/“) else name
     try:
         # allow for a to b to c if given sts client.
-        if sts == None:
-            client = boto3.client('sts')
+        if session == None:
+            session = boto3.session.Session()
+            client = session.client('sts')
         else:
-            client = sts
+            client = session.client('sts')
 
 
         response = client.get_caller_identity()
@@ -74,31 +75,42 @@ def get_org_accounts(session):
     return account_ids
 
 
-def worker(account, region_list, session):
+def worker(account, region_list):
+    vpc = None
+    session = boto3.session.Session()
     try:
         print(f"Processing Account: {account}")
         role_name = os.environ.get('RoleName', 'OrganizationAccountAccessRole')
-        child_session = get_child_session(account_id=account, role_name='OrganizationAccountAccessRole', sts=None)
-        ec2 = child_session.client('ec2')
+        child_session = get_child_session(account_id=account, role_name=role_name, session=session)
+        #ec2 = child_session.client('ec2')
         #response = ec2.describe_vpcs()
         #print(response)
 
-
-
         for region in region_list:
-            child_account = session.client('ec2', region_name=region)
-            vpcs = child_account.describe_vpcs()
-            for vpc in vpcs['Vpcs']:
+            ec2 = child_session.client('ec2', region_name=region)
+            vpcs = []
+            response = ec2.describe_vpcs()
+            for vpc in response['Vpcs']:
+                vpcs.append(vpc)
+            while 'NextToken' in response:
+                response = ec2.describe_vpcs(NextToken=response['NextToken'])
+                for vpc in response['Vpcs']:
+                    vpcs.append(vpc)
+            for vpc in vpcs:
 
-                if vpc['IsDefault'] == True:
-                    continue
-                    #print('Default VPC  //       ' + 'VPC ID: ' + vpc['VpcId'] + '//' + 'IP Range: ' + vpc['CidrBlock'])
-                else:
-                    print('AccountId:' + account + ' User Created VPC  //  ' + 'VPC ID: ' + vpc['VpcId'] + '//' + 'IP Range: ' + vpc['CidrBlock'])
+                if vpc['IsDefault'] == True: continue
+
+                #if vpc['OwnerId'] != account: continue
                 vpc_dict = {'AccountId': account, 'VpcId': vpc['VpcId'], 'CIDR': vpc['CidrBlock'], 'Region': region}
+                print(vpc_dict)
                 final_result.append(vpc_dict)
-    except:
-        pass
+    except botocore.exceptions.ClientError as e:
+
+        if e.response['Error']['Code'] == 'OptInRequired':
+            print(e)
+            pass
+    except Exception as e:
+        raise e
 
 def get_headers(results):
     # getting keys from downstream result so that custom logic added after won't required updating in multiple places
@@ -114,13 +126,11 @@ def write_csv(results):
     headers = get_headers(results)
     output_ec2 = 'output.csv'
     with open(output_ec2, 'w') as csvfile:
-        # if fieldnames = ['aws:cloudformation']
         fieldnames = headers
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames, lineterminator='\n')
 
         writer.writeheader()
         for result in results:
-            # print(f"{instance}")
             row = result
             writer.writerow(row)
 
@@ -134,14 +144,16 @@ def main():
     region_list = [region['RegionName'] for region in ec2.describe_regions()['Regions']]
     print(org_accounts)
     for account in org_accounts:
-        t = threading.Thread(target=worker, args=(account, region_list, session))
+        # session = boto3.session.Session()
+        t = threading.Thread(target=worker, args=(account, region_list))
         threads.append(t)
         t.start()
-
+        #worker(account, region_list)
     # wait for threads to finish
     for thread in threads:
         thread.join()
     print(final_result)
+    print(len(final_result))
     write_csv(final_result)
     return
 
