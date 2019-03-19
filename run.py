@@ -1,14 +1,12 @@
-import uuid
+import csv
 import os
 import threading
-import csv
+import uuid
 
 import boto3
 import botocore
 
 
-
-# Things to add
 
 def get_child_session(account_id, role_name, session=None):
     """
@@ -24,9 +22,7 @@ def get_child_session(account_id, role_name, session=None):
         if session == None:
             session = boto3.session.Session()
 
-
         client = session.client('sts')
-
 
         response = client.get_caller_identity()
         # remove the first slash
@@ -50,17 +46,18 @@ def get_child_session(account_id, role_name, session=None):
 
         if e.response['Error']['Code'] == 'AccessDenied':
             print(e)
-            #raise Exception(e)
+            # raise Exception(e)
 
         elif 'Not authorized to perform sts:AssumeRole' in str(e):
             print(e)
-            #raise Exception(f"ERROR:Not authorized to perform sts:AssumeRole on {role_arn}")
+            # raise Exception(f"ERROR:Not authorized to perform sts:AssumeRole on {role_arn}")
         else:
             print(e)
-            #raise Exception(e)
+            # raise Exception(e)
 
     finally:
         pass
+
 
 def get_org_accounts(session):
     org_client = session.client('organizations')
@@ -75,16 +72,19 @@ def get_org_accounts(session):
     return account_ids
 
 
-def worker(account, region_list):
+def worker(account, session):
     vpc = None
     session = boto3.session.Session()
     try:
         print(f"Processing Account: {account}")
+
         role_name = os.environ.get('RoleName', 'OrganizationAccountAccessRole')
         child_session = get_child_session(account_id=account, role_name=role_name, session=session)
-        #ec2 = child_session.client('ec2')
-        #response = ec2.describe_vpcs()
-        #print(response)
+        ec2 = child_session.client('ec2')
+        region_list = [region['RegionName'] for region in ec2.describe_regions()['Regions']]
+        # ec2 = child_session.client('ec2')
+        # response = ec2.describe_vpcs()
+        # print(response)
 
         for region in region_list:
             ec2 = child_session.client('ec2', region_name=region)
@@ -100,7 +100,7 @@ def worker(account, region_list):
 
                 if vpc['IsDefault'] == True: continue
 
-                #if vpc['OwnerId'] != account: continue
+                # if vpc['OwnerId'] != account: continue
                 vpc_dict = {'AccountId': account, 'VpcId': vpc['VpcId'], 'CIDR': vpc['CidrBlock'], 'Region': region}
                 print(vpc_dict)
                 final_result.append(vpc_dict)
@@ -111,6 +111,7 @@ def worker(account, region_list):
             pass
     except Exception as e:
         raise e
+
 
 def get_headers(results):
     # getting keys from downstream result so that custom logic added after won't required updating in multiple places
@@ -134,28 +135,30 @@ def write_csv(results):
             row = result
             writer.writerow(row)
 
+
 def main():
     global final_result
     threads = []
     final_result = []
     session = boto3.session.Session()
     org_accounts = get_org_accounts(session)
-    ec2 = session.client('ec2', region_name='us-east-1')
-    region_list = [region['RegionName'] for region in ec2.describe_regions()['Regions']]
+
     print(org_accounts)
     for account in org_accounts:
         # session = boto3.session.Session()
-        t = threading.Thread(target=worker, args=(account, region_list))
+        print(account)
+        t = threading.Thread(target=worker, args=(account, None))
         threads.append(t)
         t.start()
-        #worker(account, region_list)
+        # worker(account, region_list)
     # wait for threads to finish
     for thread in threads:
         thread.join()
-    print(final_result)
+
     print(len(final_result))
     write_csv(final_result)
     return
+
 
 if __name__ == '__main__':
     main()
