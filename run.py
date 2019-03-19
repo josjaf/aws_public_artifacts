@@ -23,9 +23,9 @@ def get_child_session(account_id, role_name, session=None):
         # allow for a to b to c if given sts client.
         if session == None:
             session = boto3.session.Session()
-            client = session.client('sts')
-        else:
-            client = session.client('sts')
+
+
+        client = session.client('sts')
 
 
         response = client.get_caller_identity()
