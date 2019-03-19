@@ -13,7 +13,7 @@ def get_child_session(account_id, role_name, session=None):
     get session, with error handling, allows for passing in an sts client. This allows Account A > B > C where A cannot assume a role directly to C
     :param account_id:
     :param role_name:
-    :param sts:
+    :param session=None:
     :return:
     """
     # “/“ + name if not name.startswith(“/“) else name
@@ -60,6 +60,11 @@ def get_child_session(account_id, role_name, session=None):
 
 
 def get_org_accounts(session):
+    """
+
+    :param session:
+    :return:
+    """
     org_client = session.client('organizations')
     account_ids = []
     response = org_client.list_accounts()
@@ -73,6 +78,12 @@ def get_org_accounts(session):
 
 
 def worker(account, session):
+    """
+
+    :param account:
+    :param session:
+    :return:
+    """
     vpc = None
     session = boto3.session.Session()
     try:
@@ -114,6 +125,11 @@ def worker(account, session):
 
 
 def get_headers(results):
+    """
+
+    :param results:
+    :return:
+    """
     # getting keys from downstream result so that custom logic added after won't required updating in multiple places
     headers = []
     for d in results:
@@ -124,6 +140,11 @@ def get_headers(results):
 
 
 def write_csv(results):
+    """
+    
+    :param results:
+    :return:
+    """
     headers = get_headers(results)
     output_ec2 = 'output.csv'
     with open(output_ec2, 'w') as csvfile:
