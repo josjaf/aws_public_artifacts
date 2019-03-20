@@ -7,7 +7,6 @@ import boto3
 import botocore
 
 
-
 def get_child_session(account_id, role_name, session=None):
     """
     get session, with error handling, allows for passing in an sts client. This allows Account A > B > C where A cannot assume a role directly to C
@@ -61,7 +60,7 @@ def get_child_session(account_id, role_name, session=None):
 
 def get_org_accounts(session):
     """
-
+    return a list of all accounts in the organization
     :param session:
     :return:
     """
@@ -79,7 +78,7 @@ def get_org_accounts(session):
 
 def worker(account, session):
     """
-
+    function to run inside threads, new session required for each thread. caught errors when only using 1 argument
     :param account:
     :param session:
     :return:
@@ -123,11 +122,11 @@ def worker(account, session):
 
 def get_headers(results):
     """
-
+    getting keys from downstream result so that custom logic added after won't required updating in multiple places
     :param results:
     :return:
     """
-    # getting keys from downstream result so that custom logic added after won't required updating in multiple places
+
     headers = []
     for d in results:
         for key in d.keys():
@@ -138,7 +137,7 @@ def get_headers(results):
 
 def write_csv(results):
     """
-    
+    write to csv
     :param results:
     :return:
     """
