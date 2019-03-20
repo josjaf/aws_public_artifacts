@@ -7,3 +7,7 @@ Application process flow:
 3. Returns results and appends a CSV file with the following values:  AccountId,	CIDR Block,	VpcId,	Region located.
 
 This application uses threading to speed up the process of querying the regions of each account.  Users will notice a momentary spike in local machine resources as the threads and sessions are created and the APIs invoked.
+
+License
+
+This library is licensed under the Apache 2.0 License.
